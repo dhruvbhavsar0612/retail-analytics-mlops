@@ -1,0 +1,293 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Retail Insights Platform Dashboard",
+    "tags": ["retail", "analytics", "real-time"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Kafka Cluster Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "kafka_server_replicamanager_underreplicatedpartitions",
+            "legendFormat": "Under-replicated Partitions"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Kafka Message Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kafka_server_brokertopicmetrics_messagesin_total[5m])",
+            "legendFormat": "Messages/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Consumer Lag",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kafka_consumer_group_consumer_lag_sum",
+            "legendFormat": "Consumer Lag"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Airflow DAG Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "airflow_dag_success_rate",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "green", "value": 95}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Airflow Task Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "airflow_task_duration_seconds",
+            "legendFormat": "Task Duration"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Redshift Query Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redshift_query_duration_seconds",
+            "legendFormat": "Query Duration"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 8}
+      },
+      {
+        "id": 7,
+        "title": "System Resources",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "CPU Usage %"
+          },
+          {
+            "expr": "100 - (avg by (instance) (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100)",
+            "legendFormat": "Memory Usage %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Disk Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100)",
+            "legendFormat": "Disk Usage %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "Clickstream Events",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(clickstream_events_total[5m])",
+            "legendFormat": "Events/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 10,
+        "title": "Conversion Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(rate(purchase_events_total[1h]) / rate(page_view_events_total[1h])) * 100",
+            "legendFormat": "Conversion Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 2},
+                {"color": "green", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 24}
+      },
+      {
+        "id": 11,
+        "title": "Data Pipeline Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "data_pipeline_latency_seconds",
+            "legendFormat": "Pipeline Latency"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 24}
+      },
+      {
+        "id": 12,
+        "title": "S3 Storage Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "s3_bucket_size_bytes",
+            "legendFormat": "Storage Usage"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32}
+      },
+      {
+        "id": 13,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(error_events_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32}
+      },
+      {
+        "id": 14,
+        "title": "Active Users",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "active_users_total",
+            "legendFormat": "Active Users"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 100},
+                {"color": "green", "value": 500}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 40}
+      },
+      {
+        "id": 15,
+        "title": "Revenue Metrics",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(revenue_total[1h])",
+            "legendFormat": "Revenue/Hour"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 1000},
+                {"color": "green", "value": 5000}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 40}
+      },
+      {
+        "id": 16,
+        "title": "Product Performance",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, product_views_total)",
+            "legendFormat": "Product Views"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1,
+    "links": [],
+    "annotations": {
+      "list": []
+    },
+    "templating": {
+      "list": []
+    }
+  }
+} 

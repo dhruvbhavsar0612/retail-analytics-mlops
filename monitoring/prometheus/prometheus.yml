@@ -1,0 +1,139 @@
+# Prometheus configuration for Retail Insights Platform
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alert manager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Rule files
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Kafka brokers
+  - job_name: 'kafka'
+    static_configs:
+      - targets:
+        - 'kafka-broker-0:9092'
+        - 'kafka-broker-1:9092'
+        - 'kafka-broker-2:9092'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Zookeeper
+  - job_name: 'zookeeper'
+    static_configs:
+      - targets:
+        - 'zookeeper-0:2181'
+        - 'zookeeper-1:2181'
+        - 'zookeeper-2:2181'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Airflow
+  - job_name: 'airflow'
+    static_configs:
+      - targets: ['airflow-server:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Redshift (via CloudWatch)
+  - job_name: 'redshift'
+    static_configs:
+      - targets: ['redshift-cluster:5439']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
+
+  # EC2 instances
+  - job_name: 'ec2'
+    static_configs:
+      - targets:
+        - 'kafka-broker-0:9100'
+        - 'kafka-broker-1:9100'
+        - 'kafka-broker-2:9100'
+        - 'airflow-server:9100'
+        - 'monitoring-server:9100'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+        - 'kafka-broker-0:9100'
+        - 'kafka-broker-1:9100'
+        - 'kafka-broker-2:9100'
+        - 'airflow-server:9100'
+        - 'monitoring-server:9100'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Kafka Exporter for Kafka metrics
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # JMX Exporter for Kafka JMX metrics
+  - job_name: 'kafka-jmx'
+    static_configs:
+      - targets:
+        - 'kafka-broker-0:9404'
+        - 'kafka-broker-1:9404'
+        - 'kafka-broker-2:9404'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Databricks (via API)
+  - job_name: 'databricks'
+    static_configs:
+      - targets: ['databricks-workspace:443']
+    metrics_path: '/api/2.0/clusters/list'
+    scrape_interval: 60s
+    scheme: 'https'
+    tls_config:
+      insecure_skip_verify: true
+
+  # S3 metrics (via CloudWatch)
+  - job_name: 's3'
+    static_configs:
+      - targets: ['s3.amazonaws.com']
+    metrics_path: '/metrics'
+    scrape_interval: 300s
+
+  # CloudWatch metrics
+  - job_name: 'cloudwatch'
+    static_configs:
+      - targets: ['cloudwatch.amazonaws.com']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
+
+  # Custom application metrics
+  - job_name: 'retail-insights-app'
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Health checks
+  - job_name: 'health-checks'
+    static_configs:
+      - targets:
+        - 'kafka-broker-0:9092'
+        - 'airflow-server:8080'
+        - 'redshift-cluster:5439'
+        - 'databricks-workspace:443'
+    metrics_path: '/health'
+    scrape_interval: 30s 
