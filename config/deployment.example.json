@@ -1,0 +1,15 @@
+{
+  "databricks_host": "https://replace-with-workspace.cloud.databricks.com",
+  "databricks_token": "replace-with-databricks-token",
+  "kafka_bootstrap_servers": "localhost:9092",
+  "kafka_topics": [
+    "retail_clickstream",
+    "retail_transactions",
+    "retail_inventory"
+  ],
+  "redshift_host": "replace-with-redshift-endpoint",
+  "redshift_port": 5439,
+  "redshift_database": "retail_analytics",
+  "redshift_username": "admin",
+  "redshift_password": "replace-with-redshift-password"
+}
