@@ -119,6 +119,7 @@ The DAG in `airflow/dags/retail_insights_pipeline.py` expects:
 - Variables: `clickstream_processing_job_id`, `transaction_processing_job_id`, `inventory_processing_job_id`, `kafka_data`, `redshift_cluster_id`, `redshift_database`, `redshift_username`, `redshift_password`, `redshift_host`, `aws_account_id`, `databricks_host`, and `databricks_token`.
 
 If using Airflow environment variables, the `AIRFLOW_VAR_*` values in `.env.example` provide the matching names.
+For example, `AIRFLOW_VAR_CLICKSTREAM_PROCESSING_JOB_ID`, `AIRFLOW_VAR_REDSHIFT_CLUSTER_ID`, and `AIRFLOW_VAR_DATABRICKS_TOKEN` map to the DAG variables used in `airflow/dags/retail_insights_pipeline.py`.
 
 ## 8. Run the Kafka data generator
 
