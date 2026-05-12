@@ -73,6 +73,8 @@ A comprehensive end-to-end real-time data engineering project that ingests, proc
 
 ## 🚀 Quick Start
 
+For complete setup instructions, see [docs/setup_manual.md](docs/setup_manual.md). Start by copying `.env.example` to `.env` and `config/deployment.example.json` to `config/deployment.json`.
+
 ### Prerequisites
 - AWS CLI configured with appropriate permissions
 - Terraform >= 1.0
@@ -167,30 +169,13 @@ real-time-retail-insights/
 ## 🔧 Configuration
 
 ### Environment Variables
-Create a `.env` file in the root directory:
+Create a `.env` file from the tracked template:
 
 ```bash
-# AWS Configuration
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-
-# Databricks Configuration
-DATABRICKS_HOST=your_databricks_workspace_url
-DATABRICKS_TOKEN=your_databricks_token
-
-# Kafka Configuration
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-KAFKA_TOPIC_CLICKSTREAM=retail_clickstream
-KAFKA_TOPIC_TRANSACTIONS=retail_transactions
-
-# Redshift Configuration
-REDSHIFT_HOST=your_redshift_cluster_endpoint
-REDSHIFT_PORT=5439
-REDSHIFT_DATABASE=retail_analytics
-REDSHIFT_USERNAME=your_username
-REDSHIFT_PASSWORD=your_password
+cp .env.example .env
 ```
+
+Then replace placeholder values for AWS, Terraform, Kafka, Databricks, Redshift, Airflow, Prometheus, and Grafana. See [docs/setup_manual.md](docs/setup_manual.md) for where each value is used.
 
 ## 📊 Data Flow
 
