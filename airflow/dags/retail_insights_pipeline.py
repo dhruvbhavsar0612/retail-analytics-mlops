@@ -6,18 +6,11 @@ Orchestrates the complete real-time retail analytics pipeline
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.bash_operator import BashOperator
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.providers.databricks.operators.databricks import DatabricksRunNowOperator
-from airflow.providers.amazon.aws.operators.glue import AwsGlueJobOperator
-from airflow.providers.amazon.aws.sensors.glue import AwsGlueJobSensor
 from airflow.providers.amazon.aws.operators.redshift_data import RedshiftDataOperator
 from airflow.providers.amazon.aws.sensors.redshift_data import RedshiftDataSensor
-from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.providers.http.sensors.http import HttpSensor
-import requests
-import json
-import logging
 
 # Default arguments
 default_args = {
@@ -112,27 +105,27 @@ def perform_data_quality_check(**context):
     """Perform data quality checks on processed data"""
     import boto3
     from datetime import datetime, timedelta
-    
+
     # Initialize S3 client
     s3_client = boto3.client('s3')
-    
+
     # Check data freshness
     bucket_name = 'retail-insights-processed-dev'
     prefix = f"analytics/hourly/year={datetime.now().year}/month={datetime.now().month}/day={datetime.now().day}"
-    
+
     try:
         response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
         if 'Contents' in response:
             latest_file = max(response['Contents'], key=lambda x: x['LastModified'])
             data_age = datetime.now(latest_file['LastModified'].tzinfo) - latest_file['LastModified']
-            
+
             if data_age > timedelta(hours=1):
                 raise Exception(f"Data is too old: {data_age}")
-            
+
             print(f"Data quality check passed. Latest data age: {data_age}")
         else:
             raise Exception("No data found for today")
-            
+
     except Exception as e:
         print(f"Data quality check failed: {e}")
         raise
@@ -151,7 +144,7 @@ load_to_redshift = RedshiftDataOperator(
     database='{{ var.value.redshift_database }}',
     db_user='{{ var.value.redshift_username }}',
     sql="""
-    COPY hourly_clickstream_metrics 
+    COPY hourly_clickstream_metrics
     FROM 's3://retail-insights-processed-dev/analytics/hourly/'
     IAM_ROLE 'arn:aws:iam::{{ var.value.aws_account_id }}:role/RedshiftS3Role'
     FORMAT AS PARQUET;
@@ -174,13 +167,13 @@ def generate_daily_summary(**context):
     import boto3
     import pandas as pd
     from datetime import datetime
-    
+
     # Initialize Redshift client
     redshift_client = boto3.client('redshift-data')
-    
+
     # Query daily metrics
     query = """
-    SELECT 
+    SELECT
         DATE(event_date) as report_date,
         COUNT(*) as total_events,
         COUNT(DISTINCT user_id) as unique_users,
@@ -188,11 +181,11 @@ def generate_daily_summary(**context):
         SUM(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) as total_purchases,
         SUM(CASE WHEN event_type = 'add_to_cart' THEN 1 ELSE 0 END) as total_add_to_cart,
         AVG(CASE WHEN event_type = 'purchase' THEN product_price ELSE NULL END) as avg_purchase_value
-    FROM hourly_clickstream_metrics 
+    FROM hourly_clickstream_metrics
     WHERE event_date >= CURRENT_DATE - 1
     GROUP BY DATE(event_date)
     """
-    
+
     try:
         response = redshift_client.execute_statement(
             ClusterIdentifier='{{ var.value.redshift_cluster_id }}',
@@ -200,9 +193,9 @@ def generate_daily_summary(**context):
             DbUser='{{ var.value.redshift_username }}',
             Sql=query
         )
-        
+
         print(f"Daily summary generated successfully. Query ID: {response['Id']}")
-        
+
     except Exception as e:
         print(f"Failed to generate daily summary: {e}")
         raise
@@ -219,16 +212,16 @@ def monitor_pipeline_health(**context):
     """Monitor overall pipeline health"""
     import requests
     from datetime import datetime
-    
+
     health_checks = {
         'kafka': 'http://kafka-broker:9092',
         'databricks': '{{ var.value.databricks_host }}/api/2.0/clusters/list',
         'redshift': '{{ var.value.redshift_host }}:5439',
         's3': 'https://s3.amazonaws.com'
     }
-    
+
     health_status = {}
-    
+
     for service, endpoint in health_checks.items():
         try:
             if service == 'kafka':
@@ -236,7 +229,7 @@ def monitor_pipeline_health(**context):
                 response = requests.get(f"{endpoint}/health", timeout=10)
             elif service == 'databricks':
                 response = requests.get(
-                    endpoint, 
+                    endpoint,
                     headers={'Authorization': f'Bearer {{ var.value.databricks_token }}'},
                     timeout=10
                 )
@@ -254,17 +247,17 @@ def monitor_pipeline_health(**context):
                 response = type('Response', (), {'status_code': 200})()
             else:
                 response = requests.get(endpoint, timeout=10)
-            
+
             health_status[service] = 'healthy' if response.status_code == 200 else 'unhealthy'
-            
+
         except Exception as e:
             health_status[service] = f'unhealthy: {str(e)}'
-    
+
     # Log health status
     print(f"Pipeline health status at {datetime.now()}:")
     for service, status in health_status.items():
         print(f"  {service}: {status}")
-    
+
     # Raise exception if any service is unhealthy
     unhealthy_services = [s for s, status in health_status.items() if 'unhealthy' in status]
     if unhealthy_services:
@@ -299,4 +292,4 @@ data_quality_check >> load_to_redshift >> monitor_redshift_load
 
 monitor_redshift_load >> [daily_summary, pipeline_health]
 
-[daily_summary, pipeline_health] >> end 
+[daily_summary, pipeline_health] >> end
