@@ -24,6 +24,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 class DatabricksKafkaConsumer:
     """Consumes Kafka messages and forwards to Databricks"""
 
@@ -106,7 +107,7 @@ class DatabricksKafkaConsumer:
             )
 
             if response.status_code == 200:
-                result = response.json()
+                _ = response.json()
                 logger.info(f"Successfully sent {len(messages)} messages to Databricks for topic {topic}")
                 self.stats['messages_sent'] += len(messages)
                 return True
@@ -280,23 +281,24 @@ class DatabricksKafkaConsumer:
 
         logger.info("Consumer stopped")
 
+
 def main():
     parser = argparse.ArgumentParser(description='Databricks Kafka Consumer')
     parser.add_argument('--bootstrap-servers', default='localhost:9092',
-                       help='Kafka bootstrap servers (default: localhost:9092)')
+                        help='Kafka bootstrap servers (default: localhost:9092)')
     parser.add_argument('--topics', nargs='+',
-                       default=['retail_clickstream', 'retail_transactions', 'retail_inventory'],
-                       help=(
-                           'Kafka topics to consume (default: retail_clickstream retail_transactions retail_inventory)'
-                       ))
+                        default=['retail_clickstream', 'retail_transactions', 'retail_inventory'],
+                        help=(
+                            'Kafka topics to consume (default: retail_clickstream retail_transactions retail_inventory)'
+                        ))
     parser.add_argument('--databricks-host', required=True,
-                       help='Databricks workspace URL')
+                        help='Databricks workspace URL')
     parser.add_argument('--databricks-token', required=True,
-                       help='Databricks access token')
+                        help='Databricks access token')
     parser.add_argument('--batch-size', type=int, default=100,
-                       help='Batch size for sending to Databricks (default: 100)')
+                        help='Batch size for sending to Databricks (default: 100)')
     parser.add_argument('--batch-timeout', type=int, default=30,
-                       help='Batch timeout in seconds (default: 30)')
+                        help='Batch timeout in seconds (default: 30)')
 
     args = parser.parse_args()
 
@@ -316,6 +318,7 @@ def main():
     except Exception as e:
         logger.error(f"Failed to run consumer: {e}")
         exit(1)
+
 
 if __name__ == "__main__":
     main()

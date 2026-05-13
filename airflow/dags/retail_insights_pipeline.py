@@ -100,6 +100,7 @@ trigger_inventory_processing = DatabricksRunNowOperator(
     dag=dag
 )
 
+
 # Data quality check function
 def perform_data_quality_check(**context):
     """Perform data quality checks on processed data"""
@@ -129,6 +130,7 @@ def perform_data_quality_check(**context):
     except Exception as e:
         print(f"Data quality check failed: {e}")
         raise
+
 
 # Data quality check task
 data_quality_check = PythonOperator(
@@ -161,12 +163,11 @@ monitor_redshift_load = RedshiftDataSensor(
     dag=dag
 )
 
+
 # Generate daily summary
 def generate_daily_summary(**context):
     """Generate daily summary report"""
     import boto3
-    import pandas as pd
-    from datetime import datetime
 
     # Initialize Redshift client
     redshift_client = boto3.client('redshift-data')
@@ -200,12 +201,14 @@ def generate_daily_summary(**context):
         print(f"Failed to generate daily summary: {e}")
         raise
 
+
 # Daily summary task
 daily_summary = PythonOperator(
     task_id='generate_daily_summary',
     python_callable=generate_daily_summary,
     dag=dag
 )
+
 
 # Monitor pipeline health
 def monitor_pipeline_health(**context):
@@ -230,7 +233,7 @@ def monitor_pipeline_health(**context):
             elif service == 'databricks':
                 response = requests.get(
                     endpoint,
-                    headers={'Authorization': f'Bearer {{ var.value.databricks_token }}'},
+                    headers={'Authorization': 'Bearer {{ var.value.databricks_token }}'},
                     timeout=10
                 )
             elif service == 'redshift':
@@ -262,6 +265,7 @@ def monitor_pipeline_health(**context):
     unhealthy_services = [s for s, status in health_status.items() if 'unhealthy' in status]
     if unhealthy_services:
         raise Exception(f"Unhealthy services: {unhealthy_services}")
+
 
 # Pipeline health monitoring
 pipeline_health = PythonOperator(

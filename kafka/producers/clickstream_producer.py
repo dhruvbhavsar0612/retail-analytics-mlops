@@ -21,6 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 class RetailClickstreamProducer:
     """Produces realistic retail clickstream data to Kafka"""
 
@@ -388,16 +389,17 @@ class RetailClickstreamProducer:
             self.producer.flush()
             self.producer.close()
 
+
 def main():
     parser = argparse.ArgumentParser(description='Retail Clickstream Data Producer')
     parser.add_argument('--bootstrap-servers', default='localhost:9092',
-                       help='Kafka bootstrap servers (default: localhost:9092)')
+                        help='Kafka bootstrap servers (default: localhost:9092)')
     parser.add_argument('--topic', default='retail_clickstream',
-                       help='Kafka topic name (default: retail_clickstream)')
+                        help='Kafka topic name (default: retail_clickstream)')
     parser.add_argument('--events-per-second', type=int, default=10,
-                       help='Events per second to generate (default: 10)')
+                        help='Events per second to generate (default: 10)')
     parser.add_argument('--duration-minutes', type=int, default=None,
-                       help='Duration to run in minutes (default: run indefinitely)')
+                        help='Duration to run in minutes (default: run indefinitely)')
 
     args = parser.parse_args()
 
@@ -410,6 +412,7 @@ def main():
     except Exception as e:
         logger.error(f"Failed to run producer: {e}")
         exit(1)
+
 
 if __name__ == "__main__":
     main()

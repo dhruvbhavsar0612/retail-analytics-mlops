@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 console = Console()
 
+
 class RetailInsightsDeployer:
     """Deploys the Retail Insights Platform"""
 
@@ -47,7 +48,7 @@ class RetailInsightsDeployer:
     def _run_command(self, command: List[str], cwd: Optional[Path] = None) -> bool:
         """Run a shell command"""
         try:
-            result = subprocess.run(
+            _ = subprocess.run(
                 command,
                 cwd=cwd or self.project_root,
                 capture_output=True,
@@ -205,7 +206,7 @@ class RetailInsightsDeployer:
 
         # Configure Databricks
         host = Prompt.ask("Databricks Workspace URL")
-        token = Prompt.ask("Databricks Access Token", password=True)
+        _ = Prompt.ask("Databricks Access Token", password=True)
 
         commands = [
             ["databricks", "configure", "--token", "--host", host],
@@ -426,6 +427,7 @@ class RetailInsightsDeployer:
 
         return True
 
+
 def main():
     parser = argparse.ArgumentParser(description="Deploy Retail Insights Platform")
     parser.add_argument("--config", default="config/deployment.json", help="Configuration file path")
@@ -444,6 +446,7 @@ def main():
     except Exception as e:
         console.print(f"\n[red]Deployment failed: {e}[/red]")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
