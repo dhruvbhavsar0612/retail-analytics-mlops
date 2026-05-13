@@ -34,7 +34,6 @@ class DatabricksKafkaConsumer:
         batch_size: int = 100,
         batch_timeout: int = 30,
     ):
-
         self.bootstrap_servers = bootstrap_servers
         self.topics = topics
         self.databricks_host = databricks_host.rstrip("/")
