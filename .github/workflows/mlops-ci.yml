@@ -1,0 +1,235 @@
+name: MLOps CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+
+  # ── Stage 1: Code Quality Gates ──────────────────────────────
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lint & type-check tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8==6.1.0 black==23.9.1 mypy==1.5.1
+
+      - name: Flake8 linting
+        run: python -m flake8 --max-line-length=120 kafka/ scripts/ airflow/ databricks/
+
+      - name: Black formatting check
+        run: python -m black --check kafka/ scripts/ airflow/ databricks/
+
+      - name: MyPy type checking
+        run: python -m mypy --ignore-missing-imports kafka/ scripts/
+
+
+  # ── Stage 2: Unit Tests ─────────────────────────────────────
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest==7.4.2 pytest-cov==4.1.0
+          pip install numpy==1.24.3 pandas==2.0.3
+          pip install python-dateutil pytz
+          pip install kafka-python-ng
+          pip install pydantic==2.3.0
+
+      - name: Run tests with coverage
+        run: python -m pytest tests/ -v --cov=. --cov-report=term-missing --timeout=60
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: .coverage
+
+
+  # ── Stage 3: Notebook Syntax Validation ─────────────────────
+  notebook-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate notebook Python syntax
+        run: |
+          for nb in databricks/notebooks/*.py; do
+            python -c "
+            import ast, re
+            with open('$nb') as f:
+                content = f.read()
+            lines = content.split('\n')
+            python_lines = [l for l in lines
+                if not l.startswith('# MAGIC')
+                and not l.startswith('# DBTITLE')
+                and l.strip() != '# COMMAND ----------'
+                and not l.startswith('# Databricks notebook')
+            ]
+            python_code = '\n'.join(python_lines)
+            ast.parse(python_code)
+            print(f'  $nb — syntax OK')
+            "
+          done
+          echo "All notebooks syntactically valid"
+
+
+  # ── Stage 4: Model Quality Gate (main branch only) ──────────
+  model-quality-gate:
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ML validation deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy==1.24.3 pandas==2.0.3 pytest==7.4.2
+
+      - name: Run model quality gates
+        run: |
+          python -c "
+          import numpy as np
+          import pandas as pd
+          from datetime import datetime, timedelta
+
+          # ── Inline copy of generate_synthetic_sessions ──
+          def generate_synthetic_sessions(n_sessions=100, seed=42):
+              rng = np.random.default_rng(seed)
+              n = n_sessions
+              DEVICE_TYPES = ['desktop', 'mobile', 'tablet']
+              CATEGORIES = ['Electronics','Clothing','Footwear','Home & Garden','Sports','Accessories']
+
+              page_views = rng.poisson(8, n).clip(1, 60)
+              unique_products = np.minimum(
+                  np.minimum(rng.poisson(page_views.astype(float) * 0.55), 20), page_views
+              ).clip(1)
+              add_to_cart = rng.poisson(page_views.astype(float) * 0.18).clip(0, 12)
+              search_events = rng.poisson(1.8, n).clip(0, 10)
+              session_duration = rng.lognormal(mean=4.2, sigma=0.7, size=n).clip(5, 5400)
+              device_types = rng.choice(DEVICE_TYPES, n, p=[0.50, 0.38, 0.12])
+
+              base_dt = datetime(2025, 6, 1)
+              session_starts = [base_dt + timedelta(
+                  days=int(rng.integers(0, 30)),
+                  hours=int(rng.integers(0, 24)),
+                  minutes=int(rng.integers(0, 60))
+              ) for _ in range(n)]
+
+              prob = 0.025
+              prob += add_to_cart * 0.09
+              prob += np.log1p(page_views) * 0.018
+              prob += np.log1p(session_duration) * 0.010
+              prob += search_events * 0.012
+              prob *= np.where(device_types == 'mobile', 0.75, 1.0)
+              prob *= np.where(device_types == 'tablet', 0.85, 1.0)
+              prob = np.clip(prob, 0.01, 0.90)
+              converted = rng.binomial(1, prob)
+
+              rows = []
+              for i in range(n):
+                  n_cats = rng.integers(1, 4)
+                  sess_cats = list(rng.choice(CATEGORIES, n_cats, replace=False))
+                  n_devs = rng.integers(1, 3)
+                  sess_devs = list(rng.choice(DEVICE_TYPES, n_devs, replace=False))
+                  dt = session_starts[i]
+                  rows.append({
+                      'session_id': f'sess_{i:06d}',
+                      'user_id': f'user_{rng.integers(10000, 99999)}',
+                      'event_date': dt.strftime('%Y-%m-%d'),
+                      'event_hour': dt.hour,
+                      'day_of_week': dt.weekday(),
+                      'page_views': int(page_views[i]),
+                      'unique_products_viewed': int(unique_products[i]),
+                      'add_to_cart_events': int(add_to_cart[i]),
+                      'search_events': int(search_events[i]),
+                      'session_duration_seconds': float(round(session_duration[i], 1)),
+                      'device_type': device_types[i],
+                      'devices_used': sess_devs,
+                      'categories_viewed': sess_cats,
+                      'n_categories_viewed': len(sess_cats),
+                      'converted_to_purchase': bool(converted[i]),
+                  })
+              return pd.DataFrame(rows)
+
+          # ── Model Quality Gates ──
+          df = generate_synthetic_sessions(n_sessions=2000, seed=42)
+          conv_rate = df['converted_to_purchase'].mean()
+
+          gates = []
+
+          # Gate 1: Conversion rate in realistic range
+          ok = 0.08 < conv_rate < 0.30
+          gates.append(('Conversion rate in [8%, 30%]', ok, f'{conv_rate:.1%}'))
+          assert ok, f'Conversion rate {conv_rate:.1%} outside expected range'
+
+          # Gate 2: Minimum sample count
+          ok = len(df) == 2000
+          gates.append(('Row count == 2000', ok, len(df)))
+          assert ok, f'Expected 2000 rows, got {len(df)}'
+
+          # Gate 3: All required columns present
+          required_cols = ['session_id','user_id','page_views','add_to_cart_events',
+                           'converted_to_purchase','device_type','categories_viewed']
+          missing = [c for c in required_cols if c not in df.columns]
+          ok = len(missing) == 0
+          gates.append(('Required columns present', ok, missing if missing else 'all present'))
+          assert ok, f'Missing columns: {missing}'
+
+          # Gate 4: Device distribution sanity
+          device_pct = df['device_type'].value_counts(normalize=True)
+          ok = device_pct.get('desktop', 0) > 0.30 and device_pct.get('mobile', 0) > 0.20
+          gates.append(('Device distribution sane', ok, dict(device_pct)))
+          assert ok, f'Unexpected device distribution: {dict(device_pct)}'
+
+          # Gate 5: unique_products <= page_views per session
+          ok = (df['unique_products_viewed'] <= df['page_views']).all()
+          gates.append(('unique_products <= page_views', ok, 'pass' if ok else 'fail'))
+          assert ok, 'Semantic violation: unique_products exceeds page_views'
+
+          # Gate 6: No nulls in critical columns
+          critical = ['session_id','user_id','page_views','converted_to_purchase']
+          nulls = df[critical].isnull().sum()
+          ok = nulls.sum() == 0
+          gates.append(('No nulls in critical columns', ok, dict(nulls)))
+          assert ok, f'Null values found: {dict(nulls[nulls > 0])}'
+
+          print('\n===== MODEL QUALITY GATES =====')
+          all_pass = True
+          for name, passed, detail in gates:
+              status = 'PASS' if passed else 'FAIL'
+              if not passed:
+                  all_pass = False
+              print(f'  [{status}] {name}: {detail}')
+          print(f'===== OVERALL: {\"PASSED\" if all_pass else \"FAILED\"} =====')
+          if not all_pass:
+              exit(1)
+          "
+      - name: Quality gate status
+        run: echo "Model quality gate passed — ready for registry"

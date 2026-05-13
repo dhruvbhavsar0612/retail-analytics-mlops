@@ -1,31 +1,57 @@
 # AGENTS.md
 
-## Cursor Cloud specific instructions
+## Project Overview
+Python-based data engineering portfolio project (Real-Time Retail Insights Platform). Flat layout — no build system, no `pyproject.toml`, no `setup.py`. All modules consume packages from `requirements.txt` directly.
 
-### Project Overview
-This is a Python-based data engineering portfolio project (Real-Time Retail Insights Platform) that demonstrates an end-to-end real-time data pipeline. It is **not** a monorepo and has no JavaScript/TypeScript.
+## Python Environment
+- Python 3.12+, virtual environment at `.venv` in the repo root.
+- Activate: `source .venv/bin/activate` (from repo root).
+- `kafka-python==2.0.2` is broken on Python 3.12. The maintained fork `kafka-python-ng` is installed instead, using the same `kafka` import namespace.
+- `requirements.txt` has a duplicate `orjson==3.9.10` entry (lines 57 and 102); pip handles this safely.
+- `databricks-api-client` (in requirements.txt) does not exist on PyPI; use `databricks-connect` / `databricks-sdk` instead.
 
-### Python Environment
-- Use Python 3.12+ with a virtual environment at `.venv` in the workspace root.
-- Activate with: `source /workspace/.venv/bin/activate`
-- The `requirements.txt` pins older versions that are not all compatible with Python 3.12. The update script installs compatible versions using `>=` constraints where exact pins fail. Key note: `kafka-python==2.0.2` is broken on Python 3.12; the maintained fork `kafka-python-ng` is installed instead (same API under the `kafka` namespace).
-- The `requirements.txt` has a duplicate `orjson==3.9.10` entry (lines 57 and 102); pip handles this gracefully.
-- `databricks-api-client` (listed in requirements.txt) does not exist on PyPI; `databricks-connect` and `databricks-sdk` are installed instead.
-
-### Linting & Formatting
-Commands (run from workspace root with venv active):
-- `python -m flake8 --max-line-length=120 kafka/ scripts/ airflow/`
-- `python -m black --check kafka/ scripts/ airflow/`
+## Linting, Formatting & Type-Checking
+Run from repo root with venv active:
+- `python -m flake8 --max-line-length=120 kafka/ scripts/ airflow/ databricks/`
+- `python -m black --check kafka/ scripts/ airflow/ databricks/`
 - `python -m mypy --ignore-missing-imports kafka/ scripts/`
 
-Note: The Airflow DAG file (`airflow/dags/retail_insights_pipeline.py`) uses Databricks-specific imports and Airflow template variables, so mypy cannot type-check it cleanly.
+The Airflow DAG (`airflow/dags/retail_insights_pipeline.py`) uses Databricks imports and Airflow template variables (`{{ var.value.* }}`), so it is excluded from mypy coverage.
 
-### Testing
-- No test files exist in the repository currently (the `tests/` directory mentioned in README is missing).
-- `python -m pytest` exits with code 5 (no tests collected), which is expected.
+## Testing
+- `python -m pytest tests/ -v` — runs unit tests (clickstream producer, synthetic data, notebook syntax).
+- Tests run without Kafka/AWS/Databricks — they validate data generation logic, invariants, and notebook syntax.
+- CI via `.github/workflows/mlops-ci.yml` runs on push/PR to `main`.
 
-### Running the Data Generator (Hello World)
-The clickstream producer can generate events without a Kafka broker for demonstration:
+## Architecture (what actually exists)
+```
+kafka/
+  producers/clickstream_producer.py   — CLI entrypoint for clickstream data generation
+  consumers/databricks_consumer.py    — CLI entrypoint consuming Kafka → Databricks
+airflow/dags/retail_insights_pipeline.py — Single Airflow DAG
+databricks/notebooks/01_clickstream_processing.py — Databricks notebook
+databricks/notebooks/02_ml_purchase_propensity.py — ML training + MLflow + Redshift notebook
+scripts/deploy.py                     — Deployment orchestrator (requires config/deployment.json)
+terraform/
+  main.tf, variables.tf
+  modules/{ec2,redshift,s3,vpc}       — only 4 modules exist; main.tf references modules not in repo (kms,iam,key_pair,cloudwatch,sns,alarms)
+monitoring/
+  prometheus/prometheus.yml
+  grafana/dashboards/retail_insights_dashboard.json
+docs/demo_guide.md
+tests/
+  test_clickstream_producer.py        — validates event generation logic
+  test_synthetic_data.py              — validates ML session data generation
+  test_notebook_syntax.py             — validates notebook Python parseability
+```
+
+## Known Missing Files (referenced in code/README but absent)
+- `config/deployment.json` — required by `scripts/deploy.py`
+- `kafka/docker-compose.yml`, `airflow/docker-compose.yml`
+- Most terraform modules referenced in `terraform/main.tf`
+
+## Running the Data Generator Without Kafka
+The clickstream producer can generate events without a Kafka broker:
 ```python
 import sys; sys.path.insert(0, 'kafka/producers')
 from clickstream_producer import RetailClickstreamProducer
@@ -33,14 +59,5 @@ producer = RetailClickstreamProducer('localhost:9092', 'retail_clickstream')
 event = producer.generate_event()  # Returns a dict, no Kafka connection needed
 ```
 
-### External Services
-Full end-to-end pipeline operation requires AWS (S3, Redshift, EC2), Databricks, Kafka, and Airflow — none of which are available in the Cloud Agent VM. Local development focuses on linting, type checking, data generation logic, and unit testing.
-
-### Missing Files
-Several files referenced in `README.md` do not exist in the repo:
-- `kafka/docker-compose.yml` and `airflow/docker-compose.yml`
-- The `tests/` directory
-- `config/deployment.json` (required by `scripts/deploy.py`)
-
-### Terraform
-Terraform is **not** pre-installed in the Cloud Agent VM. The `terraform/` directory contains IaC configs but cannot be validated without installing Terraform.
+## External Services
+Full end-to-end operation requires AWS (S3, Redshift, EC2), Databricks, Kafka, and Airflow — none available locally. Local development is limited to linting, type-checking, and code inspection.

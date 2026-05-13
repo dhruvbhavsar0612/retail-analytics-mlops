@@ -1,0 +1,57 @@
+name: Deploy to Databricks
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        default: "dev"
+        options: [dev, staging, prod]
+      notebooks:
+        description: "Notebooks to deploy (space-separated, or 'all')"
+        required: false
+        type: string
+        default: "all"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy notebooks to Databricks workspace
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          TARGET_PATH: ${{ format('/Shared/RetailInsights/{0}', github.event.inputs.environment) }}
+        run: |
+          pip install databricks-cli
+
+          # Determine which notebooks to deploy
+          if [ "${{ github.event.inputs.notebooks }}" = "all" ]; then
+            NOTEBOOKS=$(ls databricks/notebooks/*.py)
+          else
+            NOTEBOOKS=${{ github.event.inputs.notebooks }}
+          fi
+
+          # Configure Databricks CLI
+          echo "$DATABRICKS_TOKEN" | databricks configure --token --host "$DATABRICKS_HOST"
+
+          # Create target directory
+          databricks workspace mkdirs "$TARGET_PATH" 2>/dev/null || true
+
+          for nb in $NOTEBOOKS; do
+            name=$(basename "$nb" .py)
+            echo "Deploying $nb → $TARGET_PATH/$name"
+            databricks workspace import \
+              --language PYTHON \
+              --overwrite \
+              "$nb" \
+              "$TARGET_PATH/$name"
+          done
+
+          echo "Deployment complete: $(ls databricks/notebooks/*.py | wc -l) notebooks deployed"
