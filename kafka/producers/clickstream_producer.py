@@ -14,11 +14,9 @@ import logging
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 import argparse
+
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -34,7 +32,7 @@ class RetailClickstreamProducer:
 
         # Product catalog for realistic data
         self.products = self._load_product_catalog()
-        self.categories = list(set(product['category'] for product in self.products))
+        self.categories = list(set(product["category"] for product in self.products))
 
         # User behavior patterns
         self.user_sessions = {}
@@ -44,64 +42,109 @@ class RetailClickstreamProducer:
         """Load realistic product catalog"""
         return [
             {
-                "id": "P001", "name": "Wireless Bluetooth Headphones",
-                "category": "Electronics", "price": 89.99, "brand": "TechSound",
+                "id": "P001",
+                "name": "Wireless Bluetooth Headphones",
+                "category": "Electronics",
+                "price": 89.99,
+                "brand": "TechSound",
             },
             {
-                "id": "P002", "name": "Smart Fitness Watch",
-                "category": "Electronics", "price": 199.99, "brand": "FitTech",
+                "id": "P002",
+                "name": "Smart Fitness Watch",
+                "category": "Electronics",
+                "price": 199.99,
+                "brand": "FitTech",
             },
             {
-                "id": "P003", "name": "Organic Cotton T-Shirt",
-                "category": "Clothing", "price": 24.99, "brand": "EcoWear",
+                "id": "P003",
+                "name": "Organic Cotton T-Shirt",
+                "category": "Clothing",
+                "price": 24.99,
+                "brand": "EcoWear",
             },
             {
-                "id": "P004", "name": "Running Shoes",
-                "category": "Footwear", "price": 129.99, "brand": "RunFast",
+                "id": "P004",
+                "name": "Running Shoes",
+                "category": "Footwear",
+                "price": 129.99,
+                "brand": "RunFast",
             },
             {
-                "id": "P005", "name": "Coffee Maker",
-                "category": "Home & Garden", "price": 79.99, "brand": "BrewMaster",
+                "id": "P005",
+                "name": "Coffee Maker",
+                "category": "Home & Garden",
+                "price": 79.99,
+                "brand": "BrewMaster",
             },
             {
-                "id": "P006", "name": "Yoga Mat",
-                "category": "Sports", "price": 34.99, "brand": "FlexFit",
+                "id": "P006",
+                "name": "Yoga Mat",
+                "category": "Sports",
+                "price": 34.99,
+                "brand": "FlexFit",
             },
             {
-                "id": "P007", "name": "Laptop Backpack",
-                "category": "Accessories", "price": 59.99, "brand": "TravelPro",
+                "id": "P007",
+                "name": "Laptop Backpack",
+                "category": "Accessories",
+                "price": 59.99,
+                "brand": "TravelPro",
             },
             {
-                "id": "P008", "name": "Wireless Mouse",
-                "category": "Electronics", "price": 29.99, "brand": "TechSound",
+                "id": "P008",
+                "name": "Wireless Mouse",
+                "category": "Electronics",
+                "price": 29.99,
+                "brand": "TechSound",
             },
             {
-                "id": "P009", "name": "Desk Lamp",
-                "category": "Home & Garden", "price": 44.99, "brand": "LightPro",
+                "id": "P009",
+                "name": "Desk Lamp",
+                "category": "Home & Garden",
+                "price": 44.99,
+                "brand": "LightPro",
             },
             {
-                "id": "P010", "name": "Water Bottle",
-                "category": "Sports", "price": 19.99, "brand": "HydrateWell",
+                "id": "P010",
+                "name": "Water Bottle",
+                "category": "Sports",
+                "price": 19.99,
+                "brand": "HydrateWell",
             },
             {
-                "id": "P011", "name": "Denim Jeans",
-                "category": "Clothing", "price": 69.99, "brand": "EcoWear",
+                "id": "P011",
+                "name": "Denim Jeans",
+                "category": "Clothing",
+                "price": 69.99,
+                "brand": "EcoWear",
             },
             {
-                "id": "P012", "name": "Gaming Headset",
-                "category": "Electronics", "price": 149.99, "brand": "GameTech",
+                "id": "P012",
+                "name": "Gaming Headset",
+                "category": "Electronics",
+                "price": 149.99,
+                "brand": "GameTech",
             },
             {
-                "id": "P013", "name": "Plant Pot",
-                "category": "Home & Garden", "price": 14.99, "brand": "GreenThumb",
+                "id": "P013",
+                "name": "Plant Pot",
+                "category": "Home & Garden",
+                "price": 14.99,
+                "brand": "GreenThumb",
             },
             {
-                "id": "P014", "name": "Resistance Bands",
-                "category": "Sports", "price": 24.99, "brand": "FlexFit",
+                "id": "P014",
+                "name": "Resistance Bands",
+                "category": "Sports",
+                "price": 24.99,
+                "brand": "FlexFit",
             },
             {
-                "id": "P015", "name": "Phone Case",
-                "category": "Accessories", "price": 19.99, "brand": "ProtectPro",
+                "id": "P015",
+                "name": "Phone Case",
+                "category": "Accessories",
+                "price": 19.99,
+                "brand": "ProtectPro",
             },
         ]
 
@@ -110,13 +153,13 @@ class RetailClickstreamProducer:
         try:
             self.producer = KafkaProducer(
                 bootstrap_servers=self.bootstrap_servers,
-                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                key_serializer=lambda k: k.encode('utf-8') if k else None,
-                acks='all',
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                key_serializer=lambda k: k.encode("utf-8") if k else None,
+                acks="all",
                 retries=3,
                 batch_size=16384,
                 linger_ms=10,
-                buffer_memory=33554432
+                buffer_memory=33554432,
             )
             logger.info(f"Connected to Kafka broker: {self.bootstrap_servers}")
         except KafkaError as e:
@@ -138,7 +181,7 @@ class RetailClickstreamProducer:
             {"type": "desktop", "os": "macOS", "browser": "Safari"},
             {"type": "mobile", "os": "iOS", "browser": "Safari"},
             {"type": "mobile", "os": "Android", "browser": "Chrome"},
-            {"type": "tablet", "os": "iOS", "browser": "Safari"}
+            {"type": "tablet", "os": "iOS", "browser": "Safari"},
         ]
         return random.choice(devices)
 
@@ -155,14 +198,14 @@ class RetailClickstreamProducer:
             {"city": "San Antonio", "lat": 29.4241, "lng": -98.4936},
             {"city": "San Diego", "lat": 32.7157, "lng": -117.1611},
             {"city": "Dallas", "lat": 32.7767, "lng": -96.7970},
-            {"city": "San Jose", "lat": 37.3382, "lng": -121.8863}
+            {"city": "San Jose", "lat": 37.3382, "lng": -121.8863},
         ]
         city = random.choice(cities)
         # Add some randomness to coordinates
         return {
             "latitude": city["lat"] + random.uniform(-0.1, 0.1),
             "longitude": city["lng"] + random.uniform(-0.1, 0.1),
-            "city": city["city"]
+            "city": city["city"],
         }
 
     def _generate_page_view_event(self) -> Dict[str, Any]:
@@ -177,14 +220,16 @@ class RetailClickstreamProducer:
             "session_id": self.session_id,
             "page_url": f"/product/{product['id']}",
             "page_title": f"{product['name']} - {product['brand']}",
-            "referrer": random.choice([
-                "https://www.google.com/search",
-                "https://www.facebook.com",
-                "https://www.instagram.com",
-                "https://www.twitter.com",
-                "https://www.pinterest.com",
-                "direct"
-            ]),
+            "referrer": random.choice(
+                [
+                    "https://www.google.com/search",
+                    "https://www.facebook.com",
+                    "https://www.instagram.com",
+                    "https://www.twitter.com",
+                    "https://www.pinterest.com",
+                    "direct",
+                ]
+            ),
             "product_id": product["id"],
             "product_name": product["name"],
             "product_category": product["category"],
@@ -193,7 +238,7 @@ class RetailClickstreamProducer:
             "device_info": self._generate_device_info(),
             "location": self._generate_location(),
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "ip_address": f"192.168.{random.randint(1, 255)}.{random.randint(1, 255)}"
+            "ip_address": f"192.168.{random.randint(1, 255)}.{random.randint(1, 255)}",
         }
 
         return event
@@ -217,7 +262,7 @@ class RetailClickstreamProducer:
             "quantity": quantity,
             "total_value": product["price"] * quantity,
             "device_info": self._generate_device_info(),
-            "location": self._generate_location()
+            "location": self._generate_location(),
         }
 
         return event
@@ -241,14 +286,15 @@ class RetailClickstreamProducer:
                     "product_name": item["name"],
                     "product_category": item["category"],
                     "product_price": item["price"],
-                    "quantity": random.randint(1, 2)
-                } for item in cart_items
+                    "quantity": random.randint(1, 2),
+                }
+                for item in cart_items
             ],
             "total_value": total_value,
             "shipping_method": random.choice(["standard", "express", "overnight"]),
             "payment_method": random.choice(["credit_card", "paypal", "apple_pay", "google_pay"]),
             "device_info": self._generate_device_info(),
-            "location": self._generate_location()
+            "location": self._generate_location(),
         }
 
         return event
@@ -256,9 +302,18 @@ class RetailClickstreamProducer:
     def _generate_search_event(self) -> Dict[str, Any]:
         """Generate a search event"""
         search_terms = [
-            "wireless headphones", "running shoes", "coffee maker", "yoga mat",
-            "laptop backpack", "smart watch", "organic clothing", "fitness equipment",
-            "home decor", "tech accessories", "sports gear", "kitchen appliances"
+            "wireless headphones",
+            "running shoes",
+            "coffee maker",
+            "yoga mat",
+            "laptop backpack",
+            "smart watch",
+            "organic clothing",
+            "fitness equipment",
+            "home decor",
+            "tech accessories",
+            "sports gear",
+            "kitchen appliances",
         ]
 
         event = {
@@ -270,7 +325,7 @@ class RetailClickstreamProducer:
             "search_query": random.choice(search_terms),
             "search_results_count": random.randint(10, 100),
             "device_info": self._generate_device_info(),
-            "location": self._generate_location()
+            "location": self._generate_location(),
         }
 
         return event
@@ -331,11 +386,7 @@ class RetailClickstreamProducer:
         """Send event to Kafka topic"""
         try:
             # Use user_id as key for partitioning
-            future = self.producer.send(
-                self.topic,
-                key=event["user_id"],
-                value=event
-            )
+            future = self.producer.send(self.topic, key=event["user_id"], value=event)
 
             # Wait for the send to complete
             record_metadata = future.get(timeout=10)
@@ -391,15 +442,15 @@ class RetailClickstreamProducer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Retail Clickstream Data Producer')
-    parser.add_argument('--bootstrap-servers', default='localhost:9092',
-                        help='Kafka bootstrap servers (default: localhost:9092)')
-    parser.add_argument('--topic', default='retail_clickstream',
-                        help='Kafka topic name (default: retail_clickstream)')
-    parser.add_argument('--events-per-second', type=int, default=10,
-                        help='Events per second to generate (default: 10)')
-    parser.add_argument('--duration-minutes', type=int, default=None,
-                        help='Duration to run in minutes (default: run indefinitely)')
+    parser = argparse.ArgumentParser(description="Retail Clickstream Data Producer")
+    parser.add_argument(
+        "--bootstrap-servers", default="localhost:9092", help="Kafka bootstrap servers (default: localhost:9092)"
+    )
+    parser.add_argument("--topic", default="retail_clickstream", help="Kafka topic name (default: retail_clickstream)")
+    parser.add_argument("--events-per-second", type=int, default=10, help="Events per second to generate (default: 10)")
+    parser.add_argument(
+        "--duration-minutes", type=int, default=None, help="Duration to run in minutes (default: run indefinitely)"
+    )
 
     args = parser.parse_args()
 
