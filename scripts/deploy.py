@@ -19,13 +19,11 @@ from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 console = Console()
+
 
 class RetailInsightsDeployer:
     """Deploys the Retail Insights Platform"""
@@ -38,7 +36,7 @@ class RetailInsightsDeployer:
     def _load_config(self) -> Dict:
         """Load deployment configuration"""
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
             console.print(f"[red]Configuration file not found: {self.config_path}[/red]")
@@ -47,13 +45,7 @@ class RetailInsightsDeployer:
     def _run_command(self, command: List[str], cwd: Optional[Path] = None) -> bool:
         """Run a shell command"""
         try:
-            result = subprocess.run(
-                command,
-                cwd=cwd or self.project_root,
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            _ = subprocess.run(command, cwd=cwd or self.project_root, capture_output=True, text=True, check=True)
             console.print(f"[green]✓ {command[0]} completed successfully[/green]")
             return True
         except subprocess.CalledProcessError as e:
@@ -69,7 +61,7 @@ class RetailInsightsDeployer:
             ("Terraform", ["terraform", "--version"]),
             ("Docker", ["docker", "--version"]),
             ("Python", ["python", "--version"]),
-            ("Git", ["git", "--version"])
+            ("Git", ["git", "--version"]),
         ]
 
         all_good = True
@@ -102,7 +94,7 @@ class RetailInsightsDeployer:
         commands = [
             ["aws", "configure", "set", "aws_access_key_id", access_key],
             ["aws", "configure", "set", "aws_secret_access_key", secret_key],
-            ["aws", "configure", "set", "default.region", region]
+            ["aws", "configure", "set", "default.region", region],
         ]
 
         for command in commands:
@@ -136,12 +128,7 @@ class RetailInsightsDeployer:
             return False
 
         # Get outputs
-        result = subprocess.run(
-            ["terraform", "output", "-json"],
-            cwd=terraform_dir,
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["terraform", "output", "-json"], cwd=terraform_dir, capture_output=True, text=True)
 
         if result.returncode == 0:
             outputs = json.loads(result.stdout)
@@ -156,7 +143,7 @@ class RetailInsightsDeployer:
         outputs_file = self.project_root / "config" / "terraform_outputs.json"
         outputs_file.parent.mkdir(exist_ok=True)
 
-        with open(outputs_file, 'w') as f:
+        with open(outputs_file, "w") as f:
             json.dump(outputs, f, indent=2)
 
         console.print(f"[green]✓ Terraform outputs saved to {outputs_file}[/green]")
@@ -186,8 +173,9 @@ class RetailInsightsDeployer:
         """Check Kafka cluster health"""
         try:
             # Simple health check - try to connect to Kafka
-            from kafka import KafkaProducer
-            producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
+            from kafka import KafkaProducer  # type: ignore[attr-defined]
+
+            producer = KafkaProducer(bootstrap_servers=["localhost:9092"])
             producer.close()
             return True
         except Exception as e:
@@ -205,12 +193,12 @@ class RetailInsightsDeployer:
 
         # Configure Databricks
         host = Prompt.ask("Databricks Workspace URL")
-        token = Prompt.ask("Databricks Access Token", password=True)
+        _ = Prompt.ask("Databricks Access Token", password=True)
 
         commands = [
             ["databricks", "configure", "--token", "--host", host],
             ["databricks", "workspace", "mkdir", "/Shared/RetailInsights"],
-            ["databricks", "fs", "mkdir", "dbfs:/retail-insights"]
+            ["databricks", "fs", "mkdir", "dbfs:/retail-insights"],
         ]
 
         for command in commands:
@@ -221,11 +209,9 @@ class RetailInsightsDeployer:
         notebooks_dir = self.project_root / "databricks" / "notebooks"
         if notebooks_dir.exists():
             for notebook in notebooks_dir.glob("*.py"):
-                if not self._run_command([
-                    "databricks", "workspace", "import",
-                    str(notebook),
-                    f"/Shared/RetailInsights/{notebook.stem}"
-                ]):
+                if not self._run_command(
+                    ["databricks", "workspace", "import", str(notebook), f"/Shared/RetailInsights/{notebook.stem}"]
+                ):
                     return False
 
         console.print("[green]✓ Databricks workspace configured successfully[/green]")
@@ -303,20 +289,22 @@ class RetailInsightsDeployer:
         producer_script = self.project_root / "kafka" / "producers" / "clickstream_producer.py"
         if producer_script.exists():
             console.print("[yellow]Starting clickstream data producer...[/yellow]")
-            subprocess.Popen([
-                "python", str(producer_script),
-                "--events-per-second", "10"
-            ])
+            subprocess.Popen(["python", str(producer_script), "--events-per-second", "10"])
 
         # Start Kafka consumer
         consumer_script = self.project_root / "kafka" / "consumers" / "databricks_consumer.py"
         if consumer_script.exists():
             console.print("[yellow]Starting Databricks consumer...[/yellow]")
-            subprocess.Popen([
-                "python", str(consumer_script),
-                "--databricks-host", self.config.get("databricks_host", ""),
-                "--databricks-token", self.config.get("databricks_token", "")
-            ])
+            subprocess.Popen(
+                [
+                    "python",
+                    str(consumer_script),
+                    "--databricks-host",
+                    self.config.get("databricks_host", ""),
+                    "--databricks-token",
+                    self.config.get("databricks_token", ""),
+                ]
+            )
 
         console.print("[green]✓ Data pipeline started successfully[/green]")
         return True
@@ -353,7 +341,7 @@ class RetailInsightsDeployer:
             ("Prometheus", "Running", "http://localhost:9090"),
             ("Grafana", "Running", "http://localhost:3000"),
             ("Databricks", "Configured", self.config.get("databricks_host", "N/A")),
-            ("Redshift", "Deployed", "Via AWS Console")
+            ("Redshift", "Deployed", "Via AWS Console"),
         ]
 
         for service, status, url in services:
@@ -370,11 +358,13 @@ class RetailInsightsDeployer:
 
     def deploy(self, skip_tests: bool = False):
         """Deploy the complete platform"""
-        console.print(Panel.fit(
-            "[bold blue]Retail Insights Platform Deployment[/bold blue]\n"
-            "Real-time retail analytics platform with Kafka, Databricks, Airflow, and Redshift",
-            style="blue"
-        ))
+        console.print(
+            Panel.fit(
+                "[bold blue]Retail Insights Platform Deployment[/bold blue]\n"
+                "Real-time retail analytics platform with Kafka, Databricks, Airflow, and Redshift",
+                style="blue",
+            )
+        )
 
         # Check prerequisites
         if not self.check_prerequisites():
@@ -426,6 +416,7 @@ class RetailInsightsDeployer:
 
         return True
 
+
 def main():
     parser = argparse.ArgumentParser(description="Deploy Retail Insights Platform")
     parser.add_argument("--config", default="config/deployment.json", help="Configuration file path")
@@ -444,6 +435,7 @@ def main():
     except Exception as e:
         console.print(f"\n[red]Deployment failed: {e}[/red]")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
