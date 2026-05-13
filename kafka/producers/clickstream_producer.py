@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import logging
-from kafka import KafkaProducer
+from kafka import KafkaProducer  # type: ignore[attr-defined]
 from kafka.errors import KafkaError
 import argparse
 
@@ -26,16 +26,16 @@ class RetailClickstreamProducer:
     def __init__(self, bootstrap_servers: str, topic: str):
         self.bootstrap_servers = bootstrap_servers
         self.topic = topic
-        self.producer = None
-        self.session_id = None
-        self.user_id = None
+        self.producer: Optional[KafkaProducer] = None
+        self.session_id: Optional[str] = None
+        self.user_id: Optional[str] = None
 
         # Product catalog for realistic data
         self.products = self._load_product_catalog()
         self.categories = list(set(product["category"] for product in self.products))
 
         # User behavior patterns
-        self.user_sessions = {}
+        self.user_sessions: Dict[str, Any] = {}
         self.page_views = 0
 
     def _load_product_catalog(self) -> List[Dict[str, Any]]:
@@ -185,7 +185,7 @@ class RetailClickstreamProducer:
         ]
         return random.choice(devices)
 
-    def _generate_location(self) -> Dict[str, float]:
+    def _generate_location(self) -> Dict[str, Any]:
         """Generate realistic location data"""
         # Major US cities with coordinates
         cities = [
@@ -201,11 +201,13 @@ class RetailClickstreamProducer:
             {"city": "San Jose", "lat": 37.3382, "lng": -121.8863},
         ]
         city = random.choice(cities)
+        lat = float(city["lat"])  # type: ignore[arg-type]
+        lng = float(city["lng"])  # type: ignore[arg-type]
         # Add some randomness to coordinates
         return {
-            "latitude": city["lat"] + random.uniform(-0.1, 0.1),
-            "longitude": city["lng"] + random.uniform(-0.1, 0.1),
-            "city": city["city"],
+            "latitude": lat + random.uniform(-0.1, 0.1),
+            "longitude": lng + random.uniform(-0.1, 0.1),
+            "city": str(city["city"]),
         }
 
     def _generate_page_view_event(self) -> Dict[str, Any]:
@@ -384,6 +386,7 @@ class RetailClickstreamProducer:
 
     def send_event(self, event: Dict[str, Any]):
         """Send event to Kafka topic"""
+        assert self.producer is not None, "Producer not connected"
         try:
             # Use user_id as key for partitioning
             future = self.producer.send(self.topic, key=event["user_id"], value=event)
@@ -437,8 +440,9 @@ class RetailClickstreamProducer:
             logger.error(f"Producer error: {e}")
             raise
         finally:
-            self.producer.flush()
-            self.producer.close()
+            if self.producer is not None:
+                self.producer.flush()
+                self.producer.close()
 
 
 def main():

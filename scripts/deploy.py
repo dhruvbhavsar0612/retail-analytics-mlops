@@ -173,7 +173,7 @@ class RetailInsightsDeployer:
         """Check Kafka cluster health"""
         try:
             # Simple health check - try to connect to Kafka
-            from kafka import KafkaProducer
+            from kafka import KafkaProducer  # type: ignore[attr-defined]
 
             producer = KafkaProducer(bootstrap_servers=["localhost:9092"])
             producer.close()

@@ -7,8 +7,8 @@ Consumes data from Kafka topics and forwards to Databricks for real-time process
 import json
 import logging
 import time
-from typing import Dict, Any, List
-from kafka import KafkaConsumer
+from typing import Dict, Any, List, Optional, Tuple
+from kafka import KafkaConsumer  # type: ignore[attr-defined]
 from kafka.errors import KafkaError
 import requests
 import argparse
@@ -41,10 +41,15 @@ class DatabricksKafkaConsumer:
         self.batch_size = batch_size
         self.batch_timeout = batch_timeout
 
-        self.consumer = None
+        self.consumer: Optional[KafkaConsumer] = None
         self.running = False
-        self.message_queue = Queue()
-        self.stats = {"messages_consumed": 0, "messages_sent": 0, "errors": 0, "start_time": None}
+        self.message_queue: Queue[Tuple[str, Any]] = Queue()
+        self.stats: Dict[str, float] = {
+            "messages_consumed": 0,
+            "messages_sent": 0,
+            "errors": 0,
+            "start_time": 0.0,
+        }
 
         # Databricks API endpoints
         self.databricks_api_base = f"{self.databricks_host}/api/2.0"
