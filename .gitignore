@@ -2,3 +2,11 @@
 __pycache__/
 *.pyc
 .env
+.terraform/
+terraform.tfstate*
+*.backup
+mlflow.db
+mlruns/
+demo_output/
+.pytest_cache/
+*.egg-info/
