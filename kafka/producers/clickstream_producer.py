@@ -8,14 +8,12 @@ import json
 import random
 import time
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
+from datetime import datetime
+from typing import Dict, List, Any, Optional
 import logging
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 import argparse
-import os
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -25,42 +23,87 @@ logger = logging.getLogger(__name__)
 
 class RetailClickstreamProducer:
     """Produces realistic retail clickstream data to Kafka"""
-    
+
     def __init__(self, bootstrap_servers: str, topic: str):
         self.bootstrap_servers = bootstrap_servers
         self.topic = topic
         self.producer = None
         self.session_id = None
         self.user_id = None
-        
+
         # Product catalog for realistic data
         self.products = self._load_product_catalog()
         self.categories = list(set(product['category'] for product in self.products))
-        
+
         # User behavior patterns
         self.user_sessions = {}
         self.page_views = 0
-        
+
     def _load_product_catalog(self) -> List[Dict[str, Any]]:
         """Load realistic product catalog"""
         return [
-            {"id": "P001", "name": "Wireless Bluetooth Headphones", "category": "Electronics", "price": 89.99, "brand": "TechSound"},
-            {"id": "P002", "name": "Smart Fitness Watch", "category": "Electronics", "price": 199.99, "brand": "FitTech"},
-            {"id": "P003", "name": "Organic Cotton T-Shirt", "category": "Clothing", "price": 24.99, "brand": "EcoWear"},
-            {"id": "P004", "name": "Running Shoes", "category": "Footwear", "price": 129.99, "brand": "RunFast"},
-            {"id": "P005", "name": "Coffee Maker", "category": "Home & Garden", "price": 79.99, "brand": "BrewMaster"},
-            {"id": "P006", "name": "Yoga Mat", "category": "Sports", "price": 34.99, "brand": "FlexFit"},
-            {"id": "P007", "name": "Laptop Backpack", "category": "Accessories", "price": 59.99, "brand": "TravelPro"},
-            {"id": "P008", "name": "Wireless Mouse", "category": "Electronics", "price": 29.99, "brand": "TechSound"},
-            {"id": "P009", "name": "Desk Lamp", "category": "Home & Garden", "price": 44.99, "brand": "LightPro"},
-            {"id": "P010", "name": "Water Bottle", "category": "Sports", "price": 19.99, "brand": "HydrateWell"},
-            {"id": "P011", "name": "Denim Jeans", "category": "Clothing", "price": 69.99, "brand": "EcoWear"},
-            {"id": "P012", "name": "Gaming Headset", "category": "Electronics", "price": 149.99, "brand": "GameTech"},
-            {"id": "P013", "name": "Plant Pot", "category": "Home & Garden", "price": 14.99, "brand": "GreenThumb"},
-            {"id": "P014", "name": "Resistance Bands", "category": "Sports", "price": 24.99, "brand": "FlexFit"},
-            {"id": "P015", "name": "Phone Case", "category": "Accessories", "price": 19.99, "brand": "ProtectPro"}
+            {
+                "id": "P001", "name": "Wireless Bluetooth Headphones",
+                "category": "Electronics", "price": 89.99, "brand": "TechSound",
+            },
+            {
+                "id": "P002", "name": "Smart Fitness Watch",
+                "category": "Electronics", "price": 199.99, "brand": "FitTech",
+            },
+            {
+                "id": "P003", "name": "Organic Cotton T-Shirt",
+                "category": "Clothing", "price": 24.99, "brand": "EcoWear",
+            },
+            {
+                "id": "P004", "name": "Running Shoes",
+                "category": "Footwear", "price": 129.99, "brand": "RunFast",
+            },
+            {
+                "id": "P005", "name": "Coffee Maker",
+                "category": "Home & Garden", "price": 79.99, "brand": "BrewMaster",
+            },
+            {
+                "id": "P006", "name": "Yoga Mat",
+                "category": "Sports", "price": 34.99, "brand": "FlexFit",
+            },
+            {
+                "id": "P007", "name": "Laptop Backpack",
+                "category": "Accessories", "price": 59.99, "brand": "TravelPro",
+            },
+            {
+                "id": "P008", "name": "Wireless Mouse",
+                "category": "Electronics", "price": 29.99, "brand": "TechSound",
+            },
+            {
+                "id": "P009", "name": "Desk Lamp",
+                "category": "Home & Garden", "price": 44.99, "brand": "LightPro",
+            },
+            {
+                "id": "P010", "name": "Water Bottle",
+                "category": "Sports", "price": 19.99, "brand": "HydrateWell",
+            },
+            {
+                "id": "P011", "name": "Denim Jeans",
+                "category": "Clothing", "price": 69.99, "brand": "EcoWear",
+            },
+            {
+                "id": "P012", "name": "Gaming Headset",
+                "category": "Electronics", "price": 149.99, "brand": "GameTech",
+            },
+            {
+                "id": "P013", "name": "Plant Pot",
+                "category": "Home & Garden", "price": 14.99, "brand": "GreenThumb",
+            },
+            {
+                "id": "P014", "name": "Resistance Bands",
+                "category": "Sports", "price": 24.99, "brand": "FlexFit",
+            },
+            {
+                "id": "P015", "name": "Phone Case",
+                "category": "Accessories", "price": 19.99, "brand": "ProtectPro",
+            },
         ]
-    
+
     def connect(self):
         """Connect to Kafka broker"""
         try:
@@ -78,15 +121,15 @@ class RetailClickstreamProducer:
         except KafkaError as e:
             logger.error(f"Failed to connect to Kafka: {e}")
             raise
-    
+
     def _generate_user_id(self) -> str:
         """Generate a realistic user ID"""
         return f"user_{random.randint(10000, 99999)}"
-    
+
     def _generate_session_id(self) -> str:
         """Generate a session ID"""
         return str(uuid.uuid4())
-    
+
     def _generate_device_info(self) -> Dict[str, str]:
         """Generate realistic device information"""
         devices = [
@@ -97,7 +140,7 @@ class RetailClickstreamProducer:
             {"type": "tablet", "os": "iOS", "browser": "Safari"}
         ]
         return random.choice(devices)
-    
+
     def _generate_location(self) -> Dict[str, float]:
         """Generate realistic location data"""
         # Major US cities with coordinates
@@ -120,11 +163,11 @@ class RetailClickstreamProducer:
             "longitude": city["lng"] + random.uniform(-0.1, 0.1),
             "city": city["city"]
         }
-    
+
     def _generate_page_view_event(self) -> Dict[str, Any]:
         """Generate a page view event"""
         product = random.choice(self.products)
-        
+
         event = {
             "event_id": str(uuid.uuid4()),
             "event_type": "page_view",
@@ -151,14 +194,14 @@ class RetailClickstreamProducer:
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "ip_address": f"192.168.{random.randint(1, 255)}.{random.randint(1, 255)}"
         }
-        
+
         return event
-    
+
     def _generate_add_to_cart_event(self) -> Dict[str, Any]:
         """Generate an add to cart event"""
         product = random.choice(self.products)
         quantity = random.randint(1, 3)
-        
+
         event = {
             "event_id": str(uuid.uuid4()),
             "event_type": "add_to_cart",
@@ -175,15 +218,15 @@ class RetailClickstreamProducer:
             "device_info": self._generate_device_info(),
             "location": self._generate_location()
         }
-        
+
         return event
-    
+
     def _generate_purchase_event(self) -> Dict[str, Any]:
         """Generate a purchase event"""
         # Simulate cart with multiple items
         cart_items = random.sample(self.products, random.randint(1, 4))
         total_value = sum(item["price"] * random.randint(1, 2) for item in cart_items)
-        
+
         event = {
             "event_id": str(uuid.uuid4()),
             "event_type": "purchase",
@@ -206,9 +249,9 @@ class RetailClickstreamProducer:
             "device_info": self._generate_device_info(),
             "location": self._generate_location()
         }
-        
+
         return event
-    
+
     def _generate_search_event(self) -> Dict[str, Any]:
         """Generate a search event"""
         search_terms = [
@@ -216,7 +259,7 @@ class RetailClickstreamProducer:
             "laptop backpack", "smart watch", "organic clothing", "fitness equipment",
             "home decor", "tech accessories", "sports gear", "kitchen appliances"
         ]
-        
+
         event = {
             "event_id": str(uuid.uuid4()),
             "event_type": "search",
@@ -228,39 +271,39 @@ class RetailClickstreamProducer:
             "device_info": self._generate_device_info(),
             "location": self._generate_location()
         }
-        
+
         return event
-    
+
     def _should_start_new_session(self) -> bool:
         """Determine if we should start a new session"""
         if not self.session_id:
             return True
-        
+
         # 30% chance to start new session after 5+ page views
         if self.page_views > 5 and random.random() < 0.3:
             return True
-        
+
         # 10% chance to start new session randomly
         if random.random() < 0.1:
             return True
-        
+
         return False
-    
+
     def _should_generate_purchase(self) -> bool:
         """Determine if we should generate a purchase event"""
         # 5% chance of purchase per session
         return random.random() < 0.05
-    
+
     def _should_generate_add_to_cart(self) -> bool:
         """Determine if we should generate an add to cart event"""
         # 15% chance of add to cart per session
         return random.random() < 0.15
-    
+
     def _should_generate_search(self) -> bool:
         """Determine if we should generate a search event"""
         # 20% chance of search per session
         return random.random() < 0.20
-    
+
     def generate_event(self) -> Dict[str, Any]:
         """Generate a realistic clickstream event"""
         # Start new session if needed
@@ -269,7 +312,7 @@ class RetailClickstreamProducer:
             self.user_id = self._generate_user_id()
             self.page_views = 0
             logger.info(f"Started new session: {self.session_id} for user: {self.user_id}")
-        
+
         # Determine event type based on probabilities
         if self._should_generate_purchase():
             event = self._generate_purchase_event()
@@ -280,9 +323,9 @@ class RetailClickstreamProducer:
         else:
             event = self._generate_page_view_event()
             self.page_views += 1
-        
+
         return event
-    
+
     def send_event(self, event: Dict[str, Any]):
         """Send event to Kafka topic"""
         try:
@@ -292,10 +335,10 @@ class RetailClickstreamProducer:
                 key=event["user_id"],
                 value=event
             )
-            
+
             # Wait for the send to complete
             record_metadata = future.get(timeout=10)
-            
+
             logger.info(
                 f"Event sent successfully - "
                 f"Topic: {record_metadata.topic}, "
@@ -303,39 +346,39 @@ class RetailClickstreamProducer:
                 f"Offset: {record_metadata.offset}, "
                 f"Event Type: {event['event_type']}"
             )
-            
+
         except KafkaError as e:
             logger.error(f"Failed to send event: {e}")
             raise
-    
-    def run(self, events_per_second: int = 10, duration_minutes: int = None):
+
+    def run(self, events_per_second: int = 10, duration_minutes: Optional[int] = None):
         """Run the producer"""
         logger.info(f"Starting clickstream producer - {events_per_second} events/sec")
-        
+
         start_time = time.time()
         event_count = 0
-        
+
         try:
             while True:
                 # Check if we should stop
                 if duration_minutes and (time.time() - start_time) > (duration_minutes * 60):
                     logger.info(f"Duration reached, stopping producer. Total events: {event_count}")
                     break
-                
+
                 # Generate and send event
                 event = self.generate_event()
                 self.send_event(event)
                 event_count += 1
-                
+
                 # Sleep to maintain rate
                 time.sleep(1.0 / events_per_second)
-                
+
                 # Log progress every 100 events
                 if event_count % 100 == 0:
                     elapsed = time.time() - start_time
                     rate = event_count / elapsed
                     logger.info(f"Sent {event_count} events in {elapsed:.1f}s (rate: {rate:.1f} events/sec)")
-        
+
         except KeyboardInterrupt:
             logger.info(f"Producer stopped by user. Total events: {event_count}")
         except Exception as e:
@@ -355,12 +398,12 @@ def main():
                        help='Events per second to generate (default: 10)')
     parser.add_argument('--duration-minutes', type=int, default=None,
                        help='Duration to run in minutes (default: run indefinitely)')
-    
+
     args = parser.parse_args()
-    
+
     # Create producer
     producer = RetailClickstreamProducer(args.bootstrap_servers, args.topic)
-    
+
     try:
         producer.connect()
         producer.run(args.events_per_second, args.duration_minutes)
@@ -369,4 +412,4 @@ def main():
         exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()

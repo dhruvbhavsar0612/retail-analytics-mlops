@@ -743,6 +743,7 @@ print(redshift_ddl)
 # COMMAND ----------
 
 # DBTITLE 1,Write Predictions to Redshift (requires Redshift JDBC driver on cluster)
+redshift_available = False
 try:
     redshift_host = dbutils.secrets.get(scope="retail-insights", key="redshift-host")
     redshift_database = dbutils.secrets.get(scope="retail-insights", key="redshift-database")
@@ -761,42 +762,97 @@ try:
         .mode("append") \
         .save()
 
+    redshift_available = True
     print(f"Predictions written to Redshift: ml_purchase_predictions ({prediction_export.count()} rows)")
 
 except ImportError:
     print("Redshift JDBC driver not available on this cluster.")
-    print("Predictions saved to Delta table as fallback:")
-    prediction_export.write.mode("overwrite").saveAsTable("ml_purchase_predictions_local")
-    print("Table: ml_purchase_predictions_local — connect Power BI via Databricks Partner Connect")
 except Exception as e:
-    print(f"Redshift write skipped (expected in demo env): {e}")
-    prediction_export.write.mode("overwrite").saveAsTable("ml_purchase_predictions_local")
-    print("Table: ml_purchase_predictions_local — connect Power BI via Databricks Partner Connect")
+    print(f"Redshift write skipped: {e}")
+
+if not redshift_available:
+    print("Saving predictions to Delta table (demo-friendly fallback):")
+    prediction_export.write.mode("overwrite").option("overwriteSchema", "true") \
+        .saveAsTable("retail_analytics.ml_purchase_predictions")
+    print("Table: retail_analytics.ml_purchase_predictions")
+    print("→ Query immediately in Databricks SQL Editor (see next cell)")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Power BI Connection Flow
+# MAGIC ## 12b. Demo — Query Predictions in Databricks SQL
 # MAGIC
-# MAGIC ```
-# MAGIC Power BI Desktop
-# MAGIC   │
-# MAGIC   ├─ Get Data → Amazon Redshift
-# MAGIC   │   Server:   <redshift-endpoint>:5439
-# MAGIC   │   Database: retail_analytics
-# MAGIC   │
-# MAGIC   └─ Tables available for BI dashboards:
-# MAGIC       • ml_purchase_predictions       ← Model predictions (this notebook)
-# MAGIC       • hourly_clickstream_metrics    ← Real-time aggregates (01 notebook)
-# MAGIC       • product_performance_metrics   ← Product analytics (01 notebook)
-# MAGIC       • category_performance_metrics  ← Category analytics (01 notebook)
-# MAGIC ```
+# MAGIC Run these in **Databricks SQL Editor** (or a new SQL cell) to demonstrate BI queries:
+
+# COMMAND ----------
+
+# DBTITLE 1,Demo SQL Queries (copy to Databricks SQL Editor)
+demo_queries = """
+-- ═══════════════════════════════════════════════════════════
+-- DEMO QUERY 1: Prediction Distribution (Bar Chart)
+-- ═══════════════════════════════════════════════════════════
+SELECT
+    probability_bucket,
+    COUNT(*) AS session_count,
+    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) AS pct
+FROM retail_analytics.ml_purchase_predictions
+GROUP BY probability_bucket
+ORDER BY probability_bucket;
+
+-- ═══════════════════════════════════════════════════════════
+-- DEMO QUERY 2: Conversion Funnel by Device (Donut Chart)
+-- ═══════════════════════════════════════════════════════════
+SELECT
+    device_type,
+    COUNT(*) AS sessions,
+    SUM(prediction_label) AS predicted_conversions,
+    ROUND(SUM(prediction_label) * 100.0 / COUNT(*), 1) AS conversion_rate_pct
+FROM retail_analytics.ml_purchase_predictions
+GROUP BY device_type
+ORDER BY conversion_rate_pct DESC;
+
+-- ═══════════════════════════════════════════════════════════
+-- DEMO QUERY 3: High-Value Sessions (retargeting list)
+-- ═══════════════════════════════════════════════════════════
+SELECT
+    session_id,
+    user_id,
+    ROUND(probability_purchase * 100, 1) AS purchase_probability_pct,
+    page_views,
+    add_to_cart_events,
+    device_type
+FROM retail_analytics.ml_purchase_predictions
+WHERE probability_purchase > 0.80
+ORDER BY probability_purchase DESC
+LIMIT 20;
+
+-- ═══════════════════════════════════════════════════════════
+-- DEMO QUERY 4: Model Performance by Hour (Line Chart)
+-- ═══════════════════════════════════════════════════════════
+SELECT
+    event_hour,
+    COUNT(*) AS sessions,
+    SUM(prediction_label) AS predicted_purchases,
+    SUM(actual_converted) AS actual_purchases,
+    ROUND(AVG(probability_purchase) * 100, 1) AS avg_probability_pct
+FROM retail_analytics.ml_purchase_predictions
+GROUP BY event_hour
+ORDER BY event_hour;
+"""
+print(demo_queries)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### BI Connection Paths (for client demo)
 # MAGIC
-# MAGIC **Sample Power BI dashboard pages:**
-# MAGIC 1. **Purchase Propensity Overview** — prediction distribution, probability buckets, daily trend
-# MAGIC 2. **Model Performance** — actual vs predicted conversion by device/category/hour
-# MAGIC 3. **High-Value Sessions** — sessions with >80% purchase probability, ready for retargeting
-# MAGIC 4. **Drift Monitoring** — predicted probability distribution over time vs baseline
+# MAGIC | Path | Data Source | Prerequisites |
+# MAGIC |---|---|---|
+# MAGIC | **A (immediate)** | Databricks SQL | DB creds only — query `retail_analytics.ml_purchase_predictions` in SQL Editor |
+# MAGIC | **B (Power BI)** | Databricks SQL Warehouse | Power BI Desktop + Databricks Partner Connect |
+# MAGIC | **C (full)** | Amazon Redshift | Terraform deploy + Redshift secrets in Databricks |
+# MAGIC
+# MAGIC **For today's demo use Path A** — no additional infrastructure needed.
 
 # COMMAND ----------
 
