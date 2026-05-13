@@ -12,8 +12,8 @@ Python-based data engineering portfolio project (Real-Time Retail Insights Platf
 
 ## Linting, Formatting & Type-Checking
 Run from repo root with venv active:
-- `python -m flake8 --max-line-length=120 kafka/ scripts/ airflow/ databricks/`
-- `python -m black --check kafka/ scripts/ airflow/ databricks/`
+- `python -m flake8 --max-line-length=120 kafka/ scripts/ airflow/`
+- `python -m black --check kafka/ scripts/ airflow/`
 - `python -m mypy --ignore-missing-imports kafka/ scripts/`
 
 The Airflow DAG (`airflow/dags/retail_insights_pipeline.py`) uses Databricks imports and Airflow template variables (`{{ var.value.* }}`), so it is excluded from mypy coverage.
